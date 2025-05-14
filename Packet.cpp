@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Packet.h"
-#include <winsock2.h>  // 添加这一行，必须在pcap.h之前
+#include <winsock2.h> 
+#define HAVE_REMOTE 
 #include "pcap.h"
 Packet::Packet()
 {

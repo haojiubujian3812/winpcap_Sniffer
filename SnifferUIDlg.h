@@ -10,34 +10,19 @@
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
-
-/* 常量 */
 const int BITMAP_LIST_MAIN_SIZE = 5;
 const int BITMAP_LIST_FILTER_SIZE = 3;
 const int BITMAP_WIDTH = 24;
 const int BITMAP_HEIGHT = 24;
-
-/////////////////////////////////////////////////////////////////////////////
-// CSnifferUIDlg dialog
-
 class CSnifferUIDlg : public CDialog
 {
 	// Construction
 public:
-	CSnifferUIDlg(CWnd* pParent = NULL);	// standard constructor
+	CSnifferUIDlg(CWnd* pParent = NULL);	
 
-	// Dialog Data
-		//{{AFX_DATA(CSnifferUIDlg)
 	enum { IDD = IDD_SNIFFERUI_DIALOG };
-	//}}AFX_DATA
-
-	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CSnifferUIDlg)
 protected:
-	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
-	//}}AFX_VIRTUAL
-
-// Implementation
+	virtual void DoDataExchange(CDataExchange* pDX);	
 protected:
 	HICON		m_hIcon;
 	HACCEL		m_hAccelMenu;
@@ -85,7 +70,7 @@ protected:
 	void initialStatusBar();
 
 	void updateStatusBar(const CString& status, int pktTotalNum, int pktDisplayNum);
-
+	void OnSize(UINT nType, int cx, int cy);
 	/* 文件夹操作相关函数 */
 	bool createDirectory(const CString& dirPath);
 	bool clearDirectory(const CString& dirPath);
@@ -144,11 +129,10 @@ public:
 	CString	MACAddr2CString(const MAC_Address& addr);
 	CString	IPAddr2CString(const IP_Address& addr);
 	afx_msg void OnTvnSelchangedTree1(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnLvnItemchangedList1(NMHDR* pNMHDR, LRESULT* pResult);
 };
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
 #endif // !defined(AFX_SNIFFERUIDLG_H__22E6FA67_26EB_4787_8108_560D03B16680__INCLUDED_)
-extern CTreeCtrl m_treeTrafficStats;  // 流量统计树形控件（外部声明）
-afx_msg void OnMenuAnalysisTraffic();  // 流量分析菜单命令

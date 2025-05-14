@@ -4,7 +4,6 @@
 #include "ThreadParam.h"
 #include "Global.h"
 #include "PacketCatcher.h"
-//#include "TrafficAnalyzer.h"
 #include <vector>
 #define HAVE_REMOTE
 #include "pcap.h"
@@ -61,8 +60,12 @@ ON_COMMAND(ID_TOOLBARBTN_START, &CSnifferUIDlg::OnClickedStart) // ¹¤¾ßÀ¸¡°¿ªÊ¼¡
 ON_COMMAND(ID_TOOLBARBTN_STOP, &CSnifferUIDlg::OnClickedStop) // ¹¤¾ßÀ¸¡°Í£Ö¹¡±°´Å¥µã»÷´¦Àí
 ON_COMMAND(ID_TOOLBARBTN_CLEAR, &CSnifferUIDlg::OnClickedClear) // ¹¤¾ßÀ¸¡°Çå¿Õ¡±°´Å¥µã»÷´¦Àí
 ON_COMMAND(ID_TOOLBARBTN_FILTER, &CSnifferUIDlg::OnClickedFilter) // ¹¤¾ßÀ¸¡°¹ýÂË¡±°´Å¥µã»÷´¦Àí
-ON_NOTIFY(TVN_SELCHANGED, IDC_TREE1, &CSnifferUIDlg::OnTvnSelchangedTree1)
+ON_NOTIFY(TVN_SELCHANGED, IDC_TREE1, OnTvnSelchangedTree1)
+ON_WM_SIZE()
+ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST1, &CSnifferUIDlg::OnLvnItemchangedList1)
 END_MESSAGE_MAP()
+
+
 
 
 BOOL CSnifferUIDlg::OnInitDialog()
@@ -95,6 +98,67 @@ BOOL CSnifferUIDlg::OnInitDialog()
 	initialStatusBar();							// ×´Ì¬À¸³õÊ¼»¯
 	createDirectory(".\\tmp");			// ÅÐ¶ÏtmpÎÄ¼þ¼ÐÊÇ·ñ´æÔÚ£¬²»´æÔÚÔò´´½¨
 	return TRUE;										// return TRUE  unless you set the focus to a control
+}
+void CSnifferUIDlg::OnSize(UINT nType, int cx, int cy)
+{
+    CDialog::OnSize(nType, cx, cy);
+    
+    if (m_listCtrlPacketList.GetSafeHwnd() && m_treeCtrlPacketDetails.GetSafeHwnd() && m_editCtrlPacketBytes.GetSafeHwnd())
+    {
+        CRect rcClient;
+        GetClientRect(&rcClient);
+        rcClient.DeflateRect(5, 5);
+
+        // »ñÈ¡Á½¸ö¹¤¾ßÀ¸¸ß¶È
+        int mainToolbarHeight = 0;
+        int filterToolbarHeight = 0;
+        if (m_toolBarMain.GetSafeHwnd()) {
+            CRect rcMainToolBar;
+            m_toolBarMain.GetWindowRect(&rcMainToolBar);
+            mainToolbarHeight = rcMainToolBar.Height();
+        }
+        if (m_toolBarFilter.GetSafeHwnd()) {
+            CRect rcFilterToolBar;
+            m_toolBarFilter.GetWindowRect(&rcFilterToolBar);
+            filterToolbarHeight = rcFilterToolBar.Height();
+        }
+
+        // µ÷Õû¿Í»§ÇøÆðÊ¼Î»ÖÃ
+        rcClient.top += mainToolbarHeight + filterToolbarHeight + 10;
+
+        // ¼ÆËã¿Ø¼þÇøÓò£¨±£Áô×´Ì¬À¸¿Õ¼ä£©
+        int statusBarHeight = 20;
+        int listHeight = rcClient.Height() * 2 / 5;
+        int remainingHeight = rcClient.Height() - listHeight - statusBarHeight - 15;
+
+        // ¸üÐÂÖ÷¿Ø¼þ²¼¾Ö
+        m_listCtrlPacketList.MoveWindow(rcClient.left, rcClient.top, rcClient.Width(), listHeight);
+        m_treeCtrlPacketDetails.MoveWindow(rcClient.left, 
+            rcClient.top + listHeight + 5, 
+            rcClient.Width() / 2 - 3, 
+            remainingHeight);
+        m_editCtrlPacketBytes.MoveWindow(rcClient.left + rcClient.Width() / 2 + 3, 
+            rcClient.top + listHeight + 5, 
+            rcClient.Width() / 2 - 3, 
+            remainingHeight);
+
+        // ¸üÐÂ¹¤¾ßÀ¸Î»ÖÃ
+        if (m_toolBarMain.GetSafeHwnd()) {
+            m_toolBarMain.MoveWindow(5, 5, rcClient.Width() - 10, mainToolbarHeight);
+        }
+        if (m_toolBarFilter.GetSafeHwnd()) {
+            m_toolBarFilter.MoveWindow(5, 5 + mainToolbarHeight + 5, rcClient.Width() - 10, filterToolbarHeight);
+        }
+
+        // ¸üÐÂ×´Ì¬À¸Î»ÖÃ
+        if (m_statusBar.GetSafeHwnd()) {
+            CRect rcStatus;
+            m_statusBar.GetWindowRect(&rcStatus);
+            m_statusBar.MoveWindow(0, rcClient.top + listHeight + remainingHeight + 20, 
+                rcClient.Width(), statusBarHeight);
+            m_statusBar.Invalidate();
+        }
+    }
 }
 void CSnifferUIDlg::OnPaint()
 {
@@ -171,7 +235,7 @@ void CSnifferUIDlg::OnClickedStart()
 		/* ¸üÐÂ×´Ì¬À¸ */
 		updateStatusBar(status, m_pool.getSize(), m_listCtrlPacketList.GetItemCount());
 
-		CString fileName = "SnifferUI_" + currentTime.Format("%Y%m%d%H%M%S") + ".pcap";
+		CString fileName = "winpcap_sniffer_" + currentTime.Format("%Y%m%d%H%M%S") + ".pcap";
 		m_pktDumper.setPath(".\\tmp\\" + fileName);
 
 		m_catcher.startCapture(MODE_CAPTURE_LIVE);
@@ -231,8 +295,8 @@ void CSnifferUIDlg::OnClickedClear()
 
 void CSnifferUIDlg::initialAccelerator()
 {
-	m_hAccelMenu = ::LoadAccelerators(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_MENU1)); // ¼ÓÔØ²Ëµ¥¿ì½Ý¼ü×ÊÔ´
-	m_hAccel = ::LoadAccelerators(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_ACCELERATOR1));
+    m_hAccelMenu = ::LoadAccelerators(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_MENU1));
+    m_hAccel = ::LoadAccelerators(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_ACCELERATOR));
 }
 
 void CSnifferUIDlg::initialMenuBar()
@@ -366,7 +430,6 @@ void CSnifferUIDlg::initialComboBoxFilterList()
         
 
 }
-
 void CSnifferUIDlg::initialListCtrlPacketList()
 {
 	CRect rect;
@@ -390,6 +453,7 @@ void CSnifferUIDlg::initialListCtrlPacketList()
 	m_listCtrlPacketList.InsertColumn(++index, "Ä¿µÄMACµØÖ·", LVCFMT_CENTER, rect.Width() * 0.175);
 	m_listCtrlPacketList.InsertColumn(++index, "Ô´IPµØÖ·", LVCFMT_CENTER, rect.Width() * 0.175);
 	m_listCtrlPacketList.InsertColumn(++index, "Ä¿µÄIPµØÖ·", LVCFMT_CENTER, rect.Width() * 0.175);
+
 }
 
 void CSnifferUIDlg::initialTreeCtrlPacketDetails()
@@ -2454,9 +2518,8 @@ void CSnifferUIDlg::OnMenuFileSaveAs()
 	{
 		saveAsFilePath = dlgFile.GetPathName();
 		m_pktDumper.dump(saveAsFilePath);
-		// m_menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_GRAYED);	// ½ûÓÃ²Ëµ¥Ïî"Áí´æÎª"
-		AfxGetMainWnd()->SetWindowText(dlgFile.GetFileName());					 // ÐÞ¸Ä±êÌâÀ¸
-		m_statusBar.SetPaneText(0, "ÒÑ±£´æÖÁ£º" + saveAsFilePath, true); // ÐÞ¸Ä×´Ì¬À¸
+		AfxGetMainWnd()->SetWindowText(dlgFile.GetFileName());
+		m_statusBar.SetPaneText(0, "ÒÑ±£´æÖÁ£º" + saveAsFilePath, true);
 	}
 }
 void CSnifferUIDlg::OnMenuFileClearCache()
@@ -2484,14 +2547,17 @@ void CSnifferUIDlg::OnTvnSelchangedTree1(NMHDR* pNMHDR, LRESULT* pResult)
 }
 BOOL CSnifferUIDlg::PreTranslateMessage(MSG* pMsg)
 {
-	if (::TranslateAccelerator(m_hWnd, m_hAccelMenu, pMsg))
-	{
-		return(TRUE);
-	}
-	else
-	{
-		if (GetAsyncKeyState(VK_CONTROL) && pMsg->wParam == 'G')
-			OnAcceleratorCtrlG();
-	}
-	return   CDialog::PreTranslateMessage(pMsg);
+    if (m_hAccelMenu && ::TranslateAccelerator(m_hWnd, m_hAccelMenu, pMsg)) 
+        return TRUE;
+    
+    if (m_hAccel && ::TranslateAccelerator(m_hWnd, m_hAccel, pMsg))
+        return TRUE;
+        
+    return CDialog::PreTranslateMessage(pMsg);
+}
+void CSnifferUIDlg::OnLvnItemchangedList1(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
+	// TODO: ÔÚ´ËÌí¼Ó¿Ø¼þÍ¨Öª´¦Àí³ÌÐò´úÂë
+	*pResult = 0;
 }
